@@ -6,32 +6,46 @@ var Fiber = Npm.require('fibers');
 var connect = Npm.require('connect');
 RoutePolicy.declare('/_saml/', 'network');
 
+var validLogin = function(samlProfile){
+  if(samlProfile.email){
+    var user = Meteor.users.findOne({'emails.address':samlProfile.email});
+
+    if(!user)
+      throw new Error("Could not find an existing user with supplied email " + samlProfile.email);
+
+    return user;
+
+  }else
+    throw new Error("SAML Profile did not contain an email address");
+};
+
 Accounts.registerLoginHandler(function(loginRequest) {
   if(!loginRequest.saml || !loginRequest.credentialToken) {
     return undefined;
   }
+
   var loginResult = Accounts.saml.retrieveCredential(loginRequest.credentialToken);
-  if(loginResult && loginResult.profile && loginResult.profile.email){
-    var user = Meteor.users.findOne({'emails.address':loginResult.profile.email});
 
-    if(!user)
-      throw new Error("Could not find an existing user with supplied email " + loginResult.profile.email);
+  if(!loginResult || !loginResult.profile)
+    throw new Error("Result did not contain SAML Profile.");
 
+  var validLogin = Accounts.saml.validLogin || validLogin;
 
-      //creating the token and adding to the user
-      var stampedToken = Accounts._generateStampedLoginToken();
-      Meteor.users.update(user,
-        {$push: {'services.resume.loginTokens': stampedToken}}
-      );
+  var user = validLogin(loginResult.profile);
 
-      //sending token along with the userId
-      return {
-        id: user._id,
-        token: stampedToken.token
-      }
+  if(!user)
+    throw new Error("Could not find an existing user.");
 
-  }else{
-    throw new Error("SAML Profile did not contain an email address");
+  //creating the token and adding to the user
+  var stampedToken = Accounts._generateStampedLoginToken();
+  Meteor.users.update(user,
+    {$push: {'services.resume.loginTokens': stampedToken}}
+  );
+
+  //sending token along with the userId
+  return {
+    userId: user._id,
+    token: stampedToken.token
   }
 });
 
