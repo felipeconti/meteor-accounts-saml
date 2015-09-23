@@ -126,15 +126,16 @@ SAML.prototype.requestToUrl = function (request, operation, callback) {
     else
       target += '?';
 
-    var samlRequest = {
-      SAMLRequest: base64
+    var query = {
+      SAMLRequest: base64,
+      RelayState: self.options.id
     };
 
     if (self.options.privateCert) {
-      samlRequest.SigAlg = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
-      samlRequest.Signature = self.signRequest(querystring.stringify(samlRequest));
+      query.SigAlg = 'http://www.w3.org/2000/09/xmldsig#rsa-sha1';
+      query.Signature = self.signRequest(querystring.stringify(query));
     }
-    target += querystring.stringify(samlRequest);
+    target += querystring.stringify(query);
 
     callback(null, target);
   });

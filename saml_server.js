@@ -89,6 +89,7 @@ middleware = function (req, res, next) {
       });
     }else if (samlObject.actionName === "validate"){
       _saml = new SAML(service);
+      samlObject.credentialToken = samlObject.credentialToken || req.body.RelayState;
       _saml.validateResponse(req.body.SAMLResponse, function (err, profile, loggedOut) {
         if(err)
           throw new Error("Unable to validate response url");
